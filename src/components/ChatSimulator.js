@@ -109,7 +109,7 @@ export default function ChatSimulator({ messages, selectedRemitente, fechaInicio
                                         </span>
                                     )}
                                 </div>
-                                <div className="text-xs text-gray-400 mt-1 text-right">
+                                <div className="text-xs text-red-600 mt-1 text-right">
                                     {msg.hora} • {msg.fechaOriginal}
                                 </div>
                             </div>

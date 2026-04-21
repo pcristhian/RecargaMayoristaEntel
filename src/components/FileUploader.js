@@ -6,7 +6,9 @@ import { Upload } from 'lucide-react';
 export default function FileUploader({ onFileUpload }) {
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         accept: {
-            'text/plain': ['.txt']
+            'text/plain': ['.txt'],
+            'application/xml': ['.xml'],
+            'text/xml': ['.xml']
         },
         maxFiles: 1,
         onDrop: (acceptedFiles) => {
@@ -37,8 +39,8 @@ export default function FileUploader({ onFileUpload }) {
                 <p className="text-green-600">Suelta el archivo aquí...</p>
             ) : (
                 <div>
-                    <p className="text-gray-600">Arrastra o haz clic para subir tu chat exportado</p>
-                    <p className="text-sm text-gray-400 mt-2">Solo archivos .txt de WhatsApp</p>
+                    <p className="text-gray-600">Arrastra o haz clic para subir tu archivo</p>
+                    <p className="text-sm text-gray-400 mt-2">Archivos .txt (WhatsApp) o .xml (SMS Backup)</p>
                 </div>
             )}
         </div>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import FileUploader from '../components/FileUploader';
 import Filters from '../components/Filters';
 import ChatSimulator from '../components/ChatSimulator';
+import FileTypeSelector from '../components/FileTypeSelector';
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
@@ -11,10 +12,68 @@ export default function Home() {
   const [selectedRemitente, setSelectedRemitente] = useState('todos');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
-  const [filtroPaquetes, setFiltroPaquetes] = useState('todos'); // Nuevo estado
+  const [filtroPaquetes, setFiltroPaquetes] = useState('todos');
   const [debugInfo, setDebugInfo] = useState('');
+  const [tipoArchivo, setTipoArchivo] = useState('whatsapp');
+  const [palabrasClave, setPalabrasClave] = useState(['paq', 'paquete', 'paquetes']);
 
-  // Parser corregido para tu formato específico
+  // Parser para archivo XML de SMS
+  const parseSMSXml = (xmlText) => {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+    const smsElements = xmlDoc.getElementsByTagName("sms");
+    const parsedMessages = [];
+    const remitentesSet = new Set();
+
+    for (let i = 0; i < smsElements.length; i++) {
+      const sms = smsElements[i];
+      const address = sms.getAttribute("address");
+      const body = sms.getAttribute("body");
+      const readableDate = sms.getAttribute("readable_date");
+      const type = sms.getAttribute("type"); // 1=recibido, 2=enviado
+
+      if (body && body.trim()) {
+        let fechaISO = '';
+        let hora = '';
+        let fechaOriginal = '';
+
+        if (readableDate) {
+          const [fechaPart, horaPart] = readableDate.split(' ');
+          const [dia, mes, año] = fechaPart.split('/');
+          fechaISO = `${año}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+          hora = horaPart.substring(0, 5);
+          fechaOriginal = fechaPart;
+        }
+
+        const remitente = type === '1' ? address : 'Yo';
+        remitentesSet.add(remitente);
+
+        parsedMessages.push({
+          fecha: fechaISO,
+          fechaOriginal: fechaOriginal,
+          hora: hora,
+          remitente: remitente,
+          texto: body,
+          timestamp: new Date(fechaISO).getTime()
+        });
+      }
+    }
+
+    parsedMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+    return {
+      messages: parsedMessages,
+      remitentes: Array.from(remitentesSet).sort(),
+      stats: {
+        formato: "SMS Backup XML",
+        totalLineas: smsElements.length,
+        procesadas: parsedMessages.length,
+        ignoradas: smsElements.length - parsedMessages.length
+      }
+    };
+  };
+
+  // Parser para formato WhatsApp
   const parseWhatsAppChat = (text) => {
     const lines = text.split('\n');
     const parsedMessages = [];
@@ -91,40 +150,45 @@ export default function Home() {
 
   const handleFileUpload = (fileContent) => {
     try {
-      const { messages: parsedMessages, remitentes: parsedRemitentes, stats } = parseWhatsAppChat(fileContent);
+      let result;
+
+      if (tipoArchivo === 'whatsapp') {
+        result = parseWhatsAppChat(fileContent);
+      } else if (tipoArchivo === 'sms') {
+        result = parseSMSXml(fileContent);
+      } else {
+        throw new Error('Tipo de archivo no soportado');
+      }
+
+      const { messages: parsedMessages, remitentes: parsedRemitentes, stats } = result;
 
       if (parsedMessages.length === 0) {
-        const primerasLineas = fileContent.split('\n').slice(0, 10).join('\n');
         setDebugInfo(`
           ❌ No se encontraron mensajes.
-          
-          Formato esperado: DD/MM/YYYY, HH:MM - Remitente: Mensaje
+          Formato: ${tipoArchivo === 'whatsapp' ? 'WhatsApp' : 'SMS'}
           Líneas totales: ${stats.totalLineas}
           Mensajes encontrados: ${parsedMessages.length}
-          
-          Primeras 5 líneas de tu archivo:
-          ${primerasLineas}
         `);
-        alert(`No se encontraron mensajes. Verifica el formato.`);
+        alert(`No se encontraron mensajes en el archivo ${tipoArchivo === 'whatsapp' ? '.txt' : '.xml'}`);
       } else {
         setMessages(parsedMessages);
         setRemitentes(parsedRemitentes);
         setSelectedRemitente('todos');
         setFechaInicio('');
         setFechaFin('');
-        setFiltroPaquetes('todos'); // Resetear filtro de paquetes
+        setFiltroPaquetes('todos');
         setDebugInfo('');
 
-        // Mostrar estadísticas de paquetes
+        // Mostrar estadísticas
         const mensajesConPaquetes = parsedMessages.filter(msg =>
-          msg.texto.toLowerCase().includes('paquetes')
+          palabrasClave.some(p => msg.texto.toLowerCase().includes(p.toLowerCase()))
         ).length;
 
-        alert(`✅ Chat cargado!\n📊 ${parsedMessages.length} mensajes\n👥 ${parsedRemitentes.length} participantes\n📦 ${mensajesConPaquetes} mensajes contienen "paquetes"`);
+        alert(`✅ Archivo ${tipoArchivo === 'whatsapp' ? 'WhatsApp' : 'SMS'} cargado!\n📊 ${parsedMessages.length} mensajes\n👥 ${parsedRemitentes.length} participantes\n📦 ${mensajesConPaquetes} mensajes con palabras clave`);
       }
     } catch (error) {
       console.error('Error:', error);
-      alert(`Error: ${error.message}`);
+      alert(`Error al procesar el archivo: ${error.message}`);
     }
   };
 
@@ -142,19 +206,23 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="bg-green-600 text-white shadow-lg mb-1">
-        <div className="container mx-auto px-4 py-1">
-          <h1 className="text-3xl font-bold">Revision de Recargas</h1>
+      <header className="bg-green-600 text-white shadow-lg mb-4">
+        <div className="container mx-auto px-4 py-6">
+          <h1 className="text-3xl font-bold">Revisión de Recargas</h1>
           <p className="text-green-100 mt-1">
             Conversaciones exportadas
           </p>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-1">
-        <div className="space-y-1">
+      <main className="container mx-auto px-4 py-4">
+        <div className="space-y-4">
           {messages.length === 0 ? (
             <>
+              <FileTypeSelector
+                selectedType={tipoArchivo}
+                onTypeChange={setTipoArchivo}
+              />
               <FileUploader onFileUpload={handleFileUpload} />
               {debugInfo && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
@@ -165,7 +233,7 @@ export default function Home() {
             </>
           ) : (
             <>
-              <div className="bg-white rounded-lg shadow-md p-2">
+              <div className="bg-white rounded-lg shadow-md p-4">
                 <div className="flex justify-between items-center">
                   <div>
                     <span className="text-sm text-gray-500">Chat cargado:</span>
@@ -196,6 +264,8 @@ export default function Home() {
                 onReset={handleReset}
                 filtroPaquetes={filtroPaquetes}
                 onFiltroPaquetesChange={setFiltroPaquetes}
+                palabrasClave={palabrasClave}
+                onPalabrasClaveChange={setPalabrasClave}
               />
 
               <ChatSimulator
@@ -204,6 +274,7 @@ export default function Home() {
                 fechaInicio={fechaInicio}
                 fechaFin={fechaFin}
                 filtroPaquetes={filtroPaquetes}
+                palabrasClave={palabrasClave}
               />
             </>
           )}
