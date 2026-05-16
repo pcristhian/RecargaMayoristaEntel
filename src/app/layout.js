@@ -4,8 +4,8 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'WhatsApp Chat Simulator',
-  description: 'Visualiza y filtra tus chats exportados de WhatsApp',
+  title: 'Chat Simulador',
+  description: 'Visualiza y filtra tus chats exportados de WhatsApp y Sms',
 }
 
 export default function RootLayout({ children }) {

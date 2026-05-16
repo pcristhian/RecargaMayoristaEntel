@@ -206,17 +206,20 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="bg-green-600 text-white shadow-lg mb-4">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold">Revisión de Recargas</h1>
-          <p className="text-green-100 mt-1">
-            Conversaciones exportadas
-          </p>
-        </div>
-      </header>
+      {/* Header condicional - solo se muestra cuando NO hay mensajes cargados */}
+      {messages.length === 0 && (
+        <header className="bg-green-600 text-white shadow-lg mb-1">
+          <div className="container mx-auto px-4 py-1">
+            <h1 className="text-3xl font-bold">Revisión de Recargas</h1>
+            <p className="text-green-100 mt-1">
+              Conversaciones exportadas
+            </p>
+          </div>
+        </header>
+      )}
 
-      <main className="container mx-auto px-4 py-4">
-        <div className="space-y-4">
+      <main className="container mx-auto px-4 py-1">
+        <div className="space-y-1">
           {messages.length === 0 ? (
             <>
               <FileTypeSelector
@@ -233,27 +236,6 @@ export default function Home() {
             </>
           ) : (
             <>
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <span className="text-sm text-gray-500">Chat cargado:</span>
-                    <span className="ml-2 font-medium">
-                      ({messages.length} mensajes, {remitentes.length} participantes)
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setMessages([]);
-                      setRemitentes([]);
-                      setDebugInfo('');
-                    }}
-                    className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md"
-                  >
-                    Cambiar archivo
-                  </button>
-                </div>
-              </div>
-
               <Filters
                 remitentes={remitentes}
                 selectedRemitente={selectedRemitente}

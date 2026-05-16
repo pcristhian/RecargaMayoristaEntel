@@ -10,8 +10,8 @@ export default function FileTypeSelector({ selectedType, onTypeChange }) {
                 <button
                     onClick={() => onTypeChange('whatsapp')}
                     className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${selectedType === 'whatsapp'
-                            ? 'border-green-500 bg-green-50 text-green-700'
-                            : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
                         }`}
                 >
                     <MessageCircle size={20} />
@@ -20,8 +20,8 @@ export default function FileTypeSelector({ selectedType, onTypeChange }) {
                 <button
                     onClick={() => onTypeChange('sms')}
                     className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${selectedType === 'sms'
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
                         }`}
                 >
                     <FileText size={20} />

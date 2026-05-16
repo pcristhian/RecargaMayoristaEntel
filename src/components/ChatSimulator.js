@@ -2,10 +2,23 @@
 
 import { useState, useEffect } from 'react';
 
-export default function ChatSimulator({ messages, selectedRemitente, fechaInicio, fechaFin, filtroPaquetes }) {
+export default function ChatSimulator({
+    messages,
+    selectedRemitente,
+    fechaInicio,
+    fechaFin,
+    filtroPaquetes,
+    palabrasClave = ['paq', 'paquete', 'paquetes']
+}) {
     const [filteredMessages, setFilteredMessages] = useState([]);
-    const [stats, setStats] = useState({ total: 0, conPaquetes: 0, sinPaquetes: 0 });
-    const palabrasClave = ['paq', 'paquete', 'paquetes', 'paquetería', 'paquetero'];
+    const [stats, setStats] = useState({ total: 0, conPaquetes: 0, sinPaquetes: 0, conRecargos: 0 });
+
+    // Palabras clave ampliadas para recargos/bonificaciones/saldo
+    const palabrasRecargo = [
+        'recargo', 'recargos', 'recarg',
+        'bonificación', 'bonificacion', 'bonif', 'bono',
+        'saldo', 'saldos'
+    ];
 
     useEffect(() => {
         let filtered = [...messages];
@@ -14,7 +27,6 @@ export default function ChatSimulator({ messages, selectedRemitente, fechaInicio
         if (selectedRemitente !== 'todos') {
             filtered = filtered.filter(msg => msg.remitente === selectedRemitente);
         }
-
         // Filtrar por fechas
         if (fechaInicio) {
             filtered = filtered.filter(msg => msg.fecha >= fechaInicio);
@@ -23,20 +35,18 @@ export default function ChatSimulator({ messages, selectedRemitente, fechaInicio
             filtered = filtered.filter(msg => msg.fecha <= fechaFin);
         }
 
-        // Definir palabras clave relacionadas con paquetes
-
-        // Filtrar por paquetes (búsqueda insensible a mayúsculas/minúsculas)
+        // Filtrar por paquetes
         if (filtroPaquetes === 'con-paquetes') {
             filtered = filtered.filter(msg =>
-                palabrasClave.some(palabra => msg.texto.toLowerCase().includes(palabra))
+                palabrasClave.some(palabra => msg.texto.toLowerCase().includes(palabra.toLowerCase()))
             );
         } else if (filtroPaquetes === 'sin-paquetes') {
             filtered = filtered.filter(msg =>
-                !palabrasClave.some(palabra => msg.texto.toLowerCase().includes(palabra))
+                !palabrasClave.some(palabra => msg.texto.toLowerCase().includes(palabra.toLowerCase()))
             );
         }
 
-        // Calcular estadísticas usando las palabras clave
+        // Calcular estadísticas
         const contienePalabraClave = (texto) => {
             const textoLower = texto.toLowerCase();
             return palabrasClave.some(palabra =>
@@ -44,72 +54,125 @@ export default function ChatSimulator({ messages, selectedRemitente, fechaInicio
             );
         };
 
+        const contieneRecargo = (texto) => {
+            const textoLower = texto.toLowerCase();
+            return palabrasRecargo.some(palabra =>
+                textoLower.includes(palabra.toLowerCase())
+            );
+        };
+
         const totalConPaquetes = filtered.filter(msg => contienePalabraClave(msg.texto)).length;
         const totalSinPaquetes = filtered.filter(msg => !contienePalabraClave(msg.texto)).length;
+        const totalConRecargos = filtered.filter(msg => contieneRecargo(msg.texto)).length;
 
         setStats({
             total: filtered.length,
             conPaquetes: totalConPaquetes,
-            sinPaquetes: totalSinPaquetes
+            sinPaquetes: totalSinPaquetes,
+            conRecargos: totalConRecargos
         });
 
         setFilteredMessages(filtered);
-    }, [messages, selectedRemitente, fechaInicio, fechaFin, filtroPaquetes]);
+    }, [messages, selectedRemitente, fechaInicio, fechaFin, filtroPaquetes, palabrasClave]);
 
     if (filteredMessages.length === 0) {
         return (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
+            <div className="bg-white rounded-lg shadow-md p-6 text-center text-gray-500">
                 No hay mensajes con los filtros seleccionados
             </div>
         );
     }
 
+    // Función para determinar el color del borde según el tipo de mensaje
+    const getBorderStyle = (texto) => {
+        const textoLower = texto.toLowerCase();
+        const tienePaquetes = palabrasClave.some(p => textoLower.includes(p.toLowerCase()));
+        const tieneRecargo = palabrasRecargo.some(p => textoLower.includes(p.toLowerCase()));
+
+        if (tienePaquetes && tieneRecargo) {
+            return 'border-l-4 border-purple-500'; // Morado para ambos
+        } else if (tienePaquetes) {
+            return 'border-l-4 border-green-500'; // Verde para paquetes
+        } else if (tieneRecargo) {
+            return 'border-l-4 border-blue-500'; // Azul para recargos
+        }
+        return '';
+    };
+
+    // Función para obtener las etiquetas del mensaje
+    const getMessageTags = (texto) => {
+        const textoLower = texto.toLowerCase();
+        const tags = [];
+
+        // Detectar paquetes (ya incluye 'paq', 'paquete', 'paquetes')
+        if (palabrasClave.some(p => textoLower.includes(p.toLowerCase()))) {
+            tags.push({ text: '📦 Paquetes', color: 'bg-green-100 text-green-800' });
+        }
+
+        // Detectar recargos/saldo/bonificaciones
+        if (palabrasRecargo.some(p => textoLower.includes(p.toLowerCase()))) {
+            tags.push({ text: '💰 Recargo/Saldo', color: 'bg-blue-100 text-blue-800' });
+        }
+
+        return tags;
+    };
+
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {/* Barra de estadísticas mejorada */}
-            <div className="border-b border-gray-200 p-4 bg-gradient-to-r from-green-50 to-white">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className="text-center md:text-left">
-                        <span className="text-gray-500">Total mensajes:</span>
-                        <span className="ml-2 font-bold text-gray-800">{stats.total}</span>
+            {/* Barra de estadísticas compacta con nuevos indicadores */}
+            <div className="border-b border-gray-200 px-3 py-1.5 bg-gradient-to-r from-green-50 to-white">
+                <div className="flex flex-wrap gap-4 text-xs">
+                    <div>
+                        <span className="text-gray-500">Total:</span>
+                        <span className="ml-1 font-bold text-gray-800">{stats.total}</span>
                     </div>
-                    <div className="text-center">
-                        <span className="text-gray-500">Recarga con "paquetes":</span>
-                        <span className="ml-2 font-bold text-green-600">{stats.conPaquetes}</span>
+                    <div>
+                        <span className="text-gray-500">📦 Paquetes:</span>
+                        <span className="ml-1 font-bold text-green-600">{stats.conPaquetes}</span>
                     </div>
-                    <div className="text-center md:text-right">
-                        <span className="text-gray-500">Recarga sin "paquetes":</span>
-                        <span className="ml-2 font-bold text-orange-600">{stats.sinPaquetes}</span>
+                    <div>
+                        <span className="text-gray-500">💰 Recargos/Saldo:</span>
+                        <span className="ml-1 font-bold text-blue-600">{stats.conRecargos}</span>
+                    </div>
+                    <div>
+                        <span className="text-gray-500">Sin etiquetas:</span>
+                        <span className="ml-1 font-bold text-orange-600">{stats.sinPaquetes}</span>
                     </div>
                 </div>
             </div>
 
-            {/* Mensajes */}
-            <div className="h-[600px] overflow-y-auto p-4 space-y-3 bg-gray-50">
+            {/* Mensajes - altura reducida */}
+            <div className="h-[600px] overflow-y-auto p-3 space-y-2 bg-gray-50">
                 {filteredMessages.map((msg, idx) => {
                     const isOwnMessage = msg.remitente === 'Tú' || msg.remitente === 'Yo' || msg.remitente === 'Mi';
-                    const tienePaquetes = msg.texto.toLowerCase().includes('paquetes');
+                    const tags = getMessageTags(msg.texto);
+                    const borderStyle = getBorderStyle(msg.texto);
 
                     return (
                         <div
                             key={idx}
                             className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                         >
-                            <div className={`max-w-[70%] ${isOwnMessage ? 'bg-green-100 rounded-2xl rounded-tr-none px-4 py-2 shadow-sm' : 'bg-white rounded-2xl rounded-tl-none px-4 py-2 shadow-sm'} ${tienePaquetes ? 'border-l-4 border-green-500' : ''}`}>
+                            <div className={`max-w-[75%] ${isOwnMessage ? 'bg-green-100 rounded-xl rounded-tr-none px-3 py-1.5 shadow-sm' : 'bg-white rounded-xl rounded-tl-none px-3 py-1.5 shadow-sm'} ${borderStyle}`}>
                                 {!isOwnMessage && (
-                                    <div className="text-xs font-semibold text-gray-600 mb-1">
+                                    <div className="text-xs font-semibold text-gray-600 mb-0.5">
                                         {msg.remitente}
                                     </div>
                                 )}
-                                <div className="text-gray-800 whitespace-pre-wrap">
+                                <div className="text-sm text-gray-800 whitespace-pre-wrap">
                                     {msg.texto}
-                                    {tienePaquetes && (
-                                        <span className="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                            📦 {palabrasClave.filter(p => msg.texto.toLowerCase().includes(p.toLowerCase())).join(', ')}
-                                        </span>
+                                    {/* Mostrar todas las etiquetas */}
+                                    {tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {tags.map((tag, i) => (
+                                                <span key={i} className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${tag.color}`}>
+                                                    {tag.text}
+                                                </span>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
-                                <div className="text-xs text-red-600 mt-1 text-right">
+                                <div className="text-xs text-gray-400 mt-0.5 text-right">
                                     {msg.hora} • {msg.fechaOriginal}
                                 </div>
                             </div>
