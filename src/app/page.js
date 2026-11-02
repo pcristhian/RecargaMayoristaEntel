@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import FileUploader from '../components/FileUploader';
 import Filters from '../components/Filters';
 import ChatSimulator from '../components/ChatSimulator';
@@ -150,6 +150,30 @@ export default function Home() {
   // NUEVO: vista activa
   const [vistaActiva, setVistaActiva] = useState('clientes'); // 'clientes' | 'mensajes'
 
+  // 🔥 Remitentes que interactuaron dentro del rango de fechas seleccionado
+  const remitentesFiltradosPorFecha = useMemo(() => {
+    if (!fechaInicio && !fechaFin) return remitentes;
+
+    const set = new Set();
+    for (const msg of messages) {
+      const cumpleInicio = !fechaInicio || msg.fecha >= fechaInicio;
+      const cumpleFin = !fechaFin || msg.fecha <= fechaFin;
+      if (cumpleInicio && cumpleFin) set.add(msg.remitente);
+    }
+    return Array.from(set).sort();
+  }, [messages, remitentes, fechaInicio, fechaFin]);
+
+  // 🔥 Si el remitente seleccionado ya no existe en el rango, volver a "todos"
+  useEffect(() => {
+    if (
+      selectedRemitente !== 'todos' &&
+      !remitentesFiltradosPorFecha.includes(selectedRemitente)
+    ) {
+      setSelectedRemitente('todos');
+    }
+  }, [remitentesFiltradosPorFecha, selectedRemitente]);
+
+
   const handleFileUpload = (fileContent) => {
     try {
       let result;
@@ -259,7 +283,7 @@ export default function Home() {
               ) : (
                 <>
                   <Filters
-                    remitentes={remitentes}
+                    remitentes={remitentesFiltradosPorFecha}
                     selectedRemitente={selectedRemitente}
                     onRemitenteChange={setSelectedRemitente}
                     fechaInicio={fechaInicio}

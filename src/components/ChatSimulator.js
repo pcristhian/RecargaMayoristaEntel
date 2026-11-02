@@ -84,19 +84,25 @@ export default function ChatSimulator({
     }
 
     // Función para determinar el color del borde según el tipo de mensaje
-    const getBorderStyle = (texto) => {
+    // Función para determinar el color de fondo y borde según el contenido
+    const getMessageStyle = (texto, isOwnMessage) => {
         const textoLower = texto.toLowerCase();
         const tienePaquetes = palabrasClave.some(p => textoLower.includes(p.toLowerCase()));
         const tieneRecargo = palabrasRecargo.some(p => textoLower.includes(p.toLowerCase()));
 
-        if (tienePaquetes && tieneRecargo) {
-            return 'border-l-4 border-purple-500'; // Morado para ambos
-        } else if (tienePaquetes) {
-            return 'border-l-4 border-green-500'; // Verde para paquetes
-        } else if (tieneRecargo) {
-            return 'border-l-4 border-blue-500'; // Azul para recargos
+        // 📦 Paquetes → VERDE (prioridad alta)
+        if (tienePaquetes && tieneRecargo) return 'bg-purple-100 border-l-4 border-purple-500';
+        if (tienePaquetes) {
+            return 'bg-green-100 border-l-4 border-green-500';
         }
-        return '';
+        // 💰 Recargos/Saldo → AZUL
+        if (tieneRecargo) {
+            return 'bg-blue-50 border-l-4 border-blue-500';
+        }
+        // 💬 Predeterminado → gris suave (ajeno) o verde muy claro (propio)
+        return isOwnMessage
+            ? 'bg-emerald-50 border-l-4 border-emerald-200'
+            : 'bg-gray-100 border-l-4 border-gray-300';
     };
 
     // Función para obtener las etiquetas del mensaje
@@ -146,19 +152,18 @@ export default function ChatSimulator({
                 {filteredMessages.map((msg, idx) => {
                     const isOwnMessage = msg.remitente === 'Tú' || msg.remitente === 'Yo' || msg.remitente === 'Mi';
                     const tags = getMessageTags(msg.texto);
-                    const borderStyle = getBorderStyle(msg.texto);
+                    const messageStyle = getMessageStyle(msg.texto, isOwnMessage);
 
                     return (
                         <div
                             key={idx}
                             className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                         >
-                            <div className={`max-w-[75%] ${isOwnMessage ? 'bg-green-100 rounded-xl rounded-tr-none px-3 py-1.5 shadow-sm' : 'bg-white rounded-xl rounded-tl-none px-3 py-1.5 shadow-sm'} ${borderStyle}`}>
-                                {!isOwnMessage && (
-                                    <div className="text-xs font-semibold text-gray-600 mb-0.5">
-                                        {msg.remitente}
-                                    </div>
-                                )}
+                            <div className={`max-w-[75%] rounded-xl px-3 py-1.5 shadow-sm ${isOwnMessage ? 'rounded-tr-none' : 'rounded-tl-none'} ${messageStyle}`}>  {!isOwnMessage && (
+                                <div className="text-xs font-semibold text-gray-600 mb-0.5">
+                                    {msg.remitente}
+                                </div>
+                            )}
                                 <div className="text-sm text-gray-800 whitespace-pre-wrap">
                                     {msg.texto}
                                     {/* Mostrar todas las etiquetas */}
